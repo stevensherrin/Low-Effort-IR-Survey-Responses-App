@@ -3,13 +3,13 @@ library(fs)
 #sessionInfo()
 
 # Define the path to your existing Shiny app
-existing_app_path <- "C:/Users/sherrins/OneDrive - Wentworth Institute of Technology/Desktop/test - low effort - Copy/myapp"
+existing_app_path <- "C:/Users/sherrins/OneDrive - Wentworth Institute of Technology/Documents/GitHub/Low-Effort-IR-Survey-Responses-App"
 
-shinylive::export(appdir = existing_app_path, destdir = "C:/Users/sherrins/OneDrive - Wentworth Institute of Technology/Desktop/test - low effort - Copy/myapp/docs")
+shinylive::export(appdir = existing_app_path, destdir = "C:/Users/sherrins/OneDrive - Wentworth Institute of Technology/Documents/GitHub/Low-Effort-IR-Survey-Responses-App/docs")
 
 #httpuv::runStaticServer("docs")
 
-httpuv::runStaticServer("C:/Users/sherrins/OneDrive - Wentworth Institute of Technology/Desktop/test - low effort - Copy/myapp/docs")
+httpuv::runStaticServer("C:/Users/sherrins/OneDrive - Wentworth Institute of Technology/Documents/GitHub/Low-Effort-IR-Survey-Responses-App/docs")
 
 #httpuv::runStaticServer("docs/", port=8008)
 
