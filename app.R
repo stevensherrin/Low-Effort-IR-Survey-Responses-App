@@ -7,6 +7,13 @@ library(bslib)
 source("helpers.R")
 source("library_functions.R")
 
+# Downloading issue in Chrome. Workaround for Chromium Issue 468227
+downloadButton <- function(...) {
+  tag <- shiny::downloadButton(...)
+  tag$attribs$download <- NULL
+  tag
+}
+
 # UI definition
 ui <- fluidPage(
   theme = bslib::bs_theme(
