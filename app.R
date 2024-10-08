@@ -95,8 +95,8 @@ ui <- fluidPage(
         tabPanel("Overview",
                  uiOutput("analysisCompleteOverview"),
                  HTML("<div style='margin-top: 20px;'>
-        <p><span class='overview-icon' style='font-size: 150%;'>&#128200;</span> This dashboard is a free tool designed to identify low-effort responses on higher education surveys like the NSSE.</p>
-        <p><span class='safety-icon' style='font-size: 150%;'>&#128274;</span> This tool uses <a href='https://shiny.posit.co/py/docs/shinylive.html' target='_blank'>ShinyLive</a>, meaning your data never leaves your computer. All processing happens locally, so you can trust that your information stays completely private and secure, without relying on external servers or cloud storage.</p>
+        <p><span class='overview-icon' style='font-size: 150%;'>&#128200;</span> This dashboard is a free tool designed to flag and remove low-effort responses on higher education surveys like the NSSE.</p>
+        <p><span class='safety-icon' style='font-size: 150%;'>&#128274;</span> This tool is deployed using <a href='https://shiny.posit.co/py/docs/shinylive.html' target='_blank'>ShinyLive</a>, ensuring your data are processed locally and remain secure.</p>
         <p><span class='process-icon' style='font-size: 150%;'>&#128187;</span> How does this work? Import your <b>raw</b> data file for the survey provided by the organization running the survey - <a href='#' onclick='alert(\"Details on how to prepare your data file go here.\");'>click here for details</a>.</p>
     </div>")
         ),
@@ -113,13 +113,13 @@ ui <- fluidPage(
 
         tabPanel("Explore Data",
                  selectInput("dataViewSelect", "See Low-Effort Responses for:",
-                             choices = c("Filter 1: Survey Duration" = "Survey completed in less than 3 minutes",
-                                         "Filter 2: Skipped Questions" = "Skipped over 25% of survey questions (excluding demographics)",
-                                         "Filter 3: Straightlined 15 or more questions in a row" = "Straightlined 15 or more questions in a row",
-                                         "Filters 4 & 5: More Straightline Behavior" = "More Straightline Behavior",
-                                         "Filter 6: Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey" = "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey",
-                                         "Filter 7: 0 hours or more than 140 hours per week on `How many hours per week?` question set" = "0 hours or more than 140 hours per week on `How many hours per week?` question set")),
-                 HTML("<p><i>This table indicates which responses were flagged for this particular issue, suggesting a low-effort response.</i></p>"),
+                             choices = c("Filter 1: Survey Duration" = "Completed survey in 3 minutes or less",
+                                         "Filter 2: Skipped Questions" = "Skipped over 25% of survey questions",
+                                         "Filter 3: Straightlined 15 Responses" = "Straightlined 15 Responses",
+                                         "Filters 4 & 5: Repeated Straightline Behavior" = "Repeated Straightline Behavior",
+                                         "Filter 6: Other Repetitive Behavior" = "Other Repetitive Behavior",
+                                         "Filter 7: Unrealistic Quantitative Responses" = "Unrealistic Quantitative Responses")),
+                 HTML("<p><i>This table displays respondents who were flagged for this particular issue, suggesting a low-effort response.</i></p>"),
                  reactableOutput("individualExamplesTable")
         ),
         tabPanel("Download Data",
@@ -131,7 +131,7 @@ ui <- fluidPage(
         ),
         tabPanel("About",
                  HTML("<h2 style='font-weight: bold;'>About this Tool</h2>
-        <p>Our tool employs a sequential approach to identify respondents whose behavior indicates potential low-effort responses. Responses pass through filters one by one, with flagged responses removed from subsequent steps. The filters are prioritized based on the severity of the violation, starting with the most serious issues. <a href='methodology_link_here'>More details on the methodology can be found here.</a></p>
+        <p>This is an 'opinionated' tool: it decides what responses qualify as 'low effort' or not based on subjectively selected criteria. Our tool uses a sequential screening method to exclude respondents whose behavior may suggest a low-effort response. The table above provides a summary of your results from the raw data file. <a href='methodology_link_here'>More details on the methodology can be found here.</a></p>
         <p>You can view the source code at Steve's <a href='https://github.com/stevensherrin' target='_blank'>GitHub page</a>. You are allowed to use and improve it, but not for any commercial purposes.</p>")
         )
         
@@ -201,8 +201,8 @@ server <- function(input, output, session) {
       min_val <- min(data()$`Total Remaining Respondents`)
       filtered_out <- max_val - min_val
       percent_flagged <- (filtered_out / max_val) * 100
-      paste0("You started with <b style='text-decoration: underline double;'>", max_val, "</b> respondents. After we searched for low-effort responses, we identified <b style='text-decoration: underline double;'>", 
-             filtered_out, "</b> respondents (<b style='text-decoration: underline double;'>", round(percent_flagged, 1), "% of total</b>). You now have <b style='text-decoration: underline double;'>", min_val, "</b> remaining responses. For details on why respondents were flagged, see the table below. For methodology details, see About.")
+      paste0("You started with <b style='text-decoration: underline double;'>", max_val, "</b> respondents. After we searched for low-effort responses, we identified and removed <b style='text-decoration: underline double;'>", 
+             filtered_out, "</b> respondents (<b style='text-decoration: underline double;'>", round(percent_flagged, 1), "% of total</b>). You now have <b style='text-decoration: underline double;'>", min_val, "</b> remaining responses. For details on why respondents were removed, see the table below. For methodology details, see About.")
     })
     
     
@@ -229,14 +229,14 @@ server <- function(input, output, session) {
             style = list(textAlign = "center"),
             minWidth = 150, maxWidth = 150
           ),
-          `Total Respondents Flagged` = colDef(
-            name = "Number of Respondents Flagged due to this Step",
+          `Total Respondents Excluded` = colDef(
+            name = "Number of Respondents Excluded due to this Step",
             headerStyle = list(textAlign = "center"),
             style = list(textAlign = "center"),
             minWidth = 150, maxWidth = 150
           ),
-          `Percentage of Total Respondents Flagged` = colDef(
-            name = "Percent of Respondents Flagged due to this Step",
+          `Percentage of Total Respondents Removed` = colDef(
+            name = "Percent of Respondents Excluded due to this Step",
             headerStyle = list(textAlign = "center"),
             format = colFormat(percent = TRUE, digits = 1),
             style = list(textAlign = "center"),
@@ -271,8 +271,8 @@ server <- function(input, output, session) {
     output$individualExamplesTable <- renderReactable({
       req(data()) # Ensure data is loaded
       
-      if (input$dataViewSelect == "Survey completed in less than 3 minutes") {
-        process_individual_examples(df, "Survey completed in less than 3 minutes")
+      if (input$dataViewSelect == "Completed survey in 3 minutes or less") {
+        process_individual_examples(df, "Completed survey in 3 minutes or less")
         columns <- colnames(step_1_filtered)
         
         column_defs <- setNames(lapply(columns, function(col) {
@@ -297,8 +297,8 @@ server <- function(input, output, session) {
         reactable(step_1_filtered, defaultPageSize = 10, columns = column_defs, 
                   style = list(width = "75%")) # Limit the width of the table because it's only two columns
         
-      } else if (input$dataViewSelect == "Skipped over 25% of survey questions (excluding demographics)") {
-        process_individual_examples(df, "Skipped over 25% of survey questions (excluding demographics)")
+      } else if (input$dataViewSelect == "Skipped over 25% of survey questions") {
+        process_individual_examples(df, "Skipped over 25% of survey questions")
         columns <- colnames(step_2_filtered) # Get the column names of the data
         
         # Create a named list of column definitions
@@ -328,8 +328,8 @@ server <- function(input, output, session) {
         
       }
       
-      else if (input$dataViewSelect == "Straightlined 15 or more questions in a row") {
-        process_individual_examples(df, "Straightlined 15 or more questions in a row")
+      else if (input$dataViewSelect == "Straightlined 15 Responses") {
+        process_individual_examples(df, "Straightlined 15 Responses")
         columns <- colnames(step_3_values) # Get the column names of the data
         
         # Create a named list of column definitions with specific styling for "Straightline Length" column
@@ -355,8 +355,8 @@ server <- function(input, output, session) {
         reactable(step_3_values, defaultPageSize = 10, columns = column_defs)
       }
       
-      else if (input$dataViewSelect == "More Straightline Behavior") {
-        process_individual_examples(df, "More Straightline Behavior")
+      else if (input$dataViewSelect == "Repeated Straightline Behavior") {
+        process_individual_examples(df, "Repeated Straightline Behavior")
         columns <- colnames(step_4_values) # Get the column names of the data
         
         # Create a named list of column definitions with specific styling for the specified columns
@@ -382,8 +382,8 @@ server <- function(input, output, session) {
         reactable(step_4_values, defaultPageSize = 10, columns = column_defs)
       }
       
-      else if (input$dataViewSelect == "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey") {
-        process_individual_examples(df, "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey")
+      else if (input$dataViewSelect == "Other Repetitive Behavior") {
+        process_individual_examples(df, "Other Repetitive Behavior")
         columns <- colnames(step_6_values) # Get the column names of the data
         
         # Create a named list of column definitions with specific styling for the specified columns
@@ -409,8 +409,8 @@ server <- function(input, output, session) {
         reactable(step_6_values, defaultPageSize = 10, columns = column_defs)
       }
       
-      else if (input$dataViewSelect == "0 hours or more than 140 hours per week on `How many hours per week?` question set") {
-        process_individual_examples(df, "0 hours or more than 140 hours per week on `How many hours per week?` question set")
+      else if (input$dataViewSelect == "Unrealistic Quantitative Responses") {
+        process_individual_examples(df, "Unrealistic Quantitative Responses")
         columns <- colnames(step_7_values) # Get the column names of the data
         
         column_defs <- setNames(lapply(columns, function(col) {
@@ -446,7 +446,7 @@ server <- function(input, output, session) {
           "This Excel file has your data and results from the 'Detecting Low Effort Surveys' tool. It contains the following sheets:",
           "",
           "1. 'Your Summary': A table displaying the frequency (and percentage) of how often respondents exhibited behaviors indicating low-effort responding.",
-          "2. 'Your Data': Your data with additional columns indicating which responses were considered ‘low effort’ based one of the criteria examined. These are responses that you may wish to consider removing from future analyses.",
+          "2. 'Your Data': Your data with new columns indicating which respondents should be removed from future analyses.",
           "",
           "If you have any questions, please contact Steve at stevensherrin@gmail.com with the title 'Detecting Low Effort Surveys'."
         )

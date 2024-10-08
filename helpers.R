@@ -153,15 +153,15 @@ clean_data <- function(df) {
 calculate_summary <- function(df) {
   summary_df <- tibble(
     Criteria = c("Responses in raw NSSE dataset",
-                 "Survey completed in less than 3 minutes", 
-                 "Skipped over 25% of survey questions (excluding demographics)",
-                 "Straightlined 15 or more questions in a row",
-                 "3 or more times straightlining 7 or more questions in a row",
-                 "3 or more scales straightlined",
-                 "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey",
-                 "0 hours or more than 140 hours per week on `How many hours per week?` question set",
-                 "Unusual responses to highly correlated items"),
-    `Percentage of Total Respondents Flagged` = c(
+                 "Completed survey in 3 minutes or less", 
+                 "Skipped over 25% of survey questions",
+                 "Straightlined 15 or more responses in a row",
+                 "Had 3 or more times they straightlined least 7 responses in a row",
+                 "Straightlined 3 or more scales",
+                 "Made repetitive pattern (e.g. AB-AB-AB) 50% or more of the time",
+                 "Unrealistic response to quantitative question (e.g. hours per week)",
+                 "Highly unusual responses to highly correlated items"),
+    `Percentage of Total Respondents Removed` = c(
       0,
       abs(row_changes[1]) / nrow(df),
       abs(row_changes[2]) / nrow(df),
@@ -173,7 +173,7 @@ calculate_summary <- function(df) {
       abs(row_changes[8]) / nrow(df)
       
     ),
-    `Total Respondents Flagged` = c(
+    `Total Respondents Excluded` = c(
       0,
       abs(row_changes[1]),
       abs(row_changes[2]),
@@ -186,7 +186,7 @@ calculate_summary <- function(df) {
     ))
     
   summary_df <- summary_df %>%
-    mutate(`Total Remaining Respondents` = nrow(df) - cumsum(`Total Respondents Flagged`)) %>%
+    mutate(`Total Remaining Respondents` = nrow(df) - cumsum(`Total Respondents Excluded`)) %>%
     mutate(`Total Remaining Respondents` = replace(`Total Remaining Respondents`, 1, nrow(df)))
   
   summary_df <- summary_df %>%
@@ -200,8 +200,8 @@ calculate_summary <- function(df) {
     bind_rows(
       tibble(
         Criteria = "Final",
-        `Percentage of Total Respondents Flagged` = sum(summary_df$`Percentage of Total Respondents Flagged`),
-        `Total Respondents Flagged` = sum(summary_df$`Total Respondents Flagged`),
+        `Percentage of Total Respondents Removed` = sum(summary_df$`Percentage of Total Respondents Removed`),
+        `Total Respondents Excluded` = sum(summary_df$`Total Respondents Excluded`),
         `Total Remaining Respondents` = summary_df$`Total Remaining Respondents`[[nrow(summary_df)]]
       )
     )
@@ -209,6 +209,39 @@ calculate_summary <- function(df) {
   assign("summary_df", summary_df, envir = .GlobalEnv)
   return(summary_df)
 }
+
+# Function to generate DiagrammeR graph
+# generate_diagram <- function(summary_df) {
+  # summary_df <- summary_df %>%
+  #   mutate(label = paste0(Criteria, "\nExcluded: ", Excluded, "\nRemaining: ", Remaining))
+  # 
+  # nodes <- paste0(
+  #   "node [shape = box, style = filled, fillcolor = LightSkyBlue]",
+  #   paste0("n", 1:nrow(summary_df), " [label = '", summary_df$label, "'];", collapse = "\n")
+  # )
+  # 
+  # edges <- paste0(
+  #   paste0("n", 1:(nrow(summary_df)-1), " -> n", 2:nrow(summary_df), ";", collapse = "\n")
+  # )
+  # 
+  # graph <- paste0(
+  #   "digraph flowchart {",
+  #   nodes, "\n",
+  #   edges, "\n",
+  #   "}"
+  # )
+  # 
+  # return(grViz(graph))
+  
+  # design <- tibble::tribble(
+  #   ~left,               ~n_left, ~right,              ~n_right,
+  #   "Study base",        1000,    "Not sampled",       250,
+  #   "Study population",  750,     "Participants with\nmissing exposure data", 100,
+  #   "Complete-case set", 650,     "",                  NA_integer_)
+  # 
+  # # Plot
+  # exclusion_flowchart(design, width = 2)
+# }
 
 
 # Format summary table
@@ -225,7 +258,7 @@ format_percentage_cell <- function(value) {
 
 # Function to process individual examples based on selected view
 process_individual_examples <- function(df, view_select) {
-  if (view_select == "Survey completed in less than 3 minutes") {
+  if (view_select == "Completed survey in 3 minutes or less") {
 
     step_1_filtered <- df %>%
       select(unique_id, duration) %>%
@@ -243,7 +276,7 @@ process_individual_examples <- function(df, view_select) {
     
     return(step_1_filtered)
     
-  } else if (view_select == "Skipped over 25% of survey questions (excluding demographics)") {
+  } else if (view_select == "Skipped over 25% of survey questions") {
     
     step_2_filtered <- step_1 %>%
       mutate(missing_percentage = round(rowSums(is.na(.)) / ncol(.) * 100),1)
@@ -268,7 +301,7 @@ process_individual_examples <- function(df, view_select) {
   }
   
   
-  else if (view_select == "Straightlined 15 or more questions in a row") {
+  else if (view_select == "Straightlined 15 Responses") {
     
     step_3_values <- step_3_values %>%
       arrange(desc(longstring)) %>%
@@ -282,7 +315,7 @@ process_individual_examples <- function(df, view_select) {
     return(step_3_values)
   }
   
-  else if (view_select == "More Straightline Behavior") {
+  else if (view_select == "Repeated Straightline Behavior") {
     
     step_4_values <- merge(step_4_values, step_5_values,
                            by = "unique_id",
@@ -308,7 +341,7 @@ process_individual_examples <- function(df, view_select) {
     return(step_4_values)
   }
   
-  else if (view_select == "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey") {
+  else if (view_select == "Other Repetitive Behavior") {
     step_6_values <- step_6_values %>%
       arrange(desc(repetitive), desc(rp_2)) %>%
       rename(`Row in Dataset` = unique_id,
@@ -326,7 +359,7 @@ process_individual_examples <- function(df, view_select) {
     return(step_6_values)
   }
   
-  else if (view_select == "0 hours or more than 140 hours per week on `How many hours per week?` question set") {
+  else if (view_select == "Unrealistic Quantitative Responses") {
     step_7_values <- step_7_values %>%
       arrange(desc(total_hours_per_week)) %>%
       rename(`Row in Dataset` = unique_id,
@@ -621,14 +654,14 @@ identify_careless_responses <- function(df) {
   # Recode the last_dataframe column
   last_occurrence <- last_occurrence %>%
     mutate(last_dataframe = recode(last_dataframe, 
-                                   `step_0` = "Survey completed in less than 3 minutes",
-                                   `step_1` = "Skipped over 25% of survey questions (excluding demographics)",
-                                   `step_2` = "Straightlined 15 or more questions in a row",
-                                   `step_3` = "3 or more times straightlining 7 or more questions in a row",
-                                   `step_4` = "3 or more scales straightlined",
-                                   `step_5` = "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 60% or more of the survey",
-                                   `step_6` = "0 hours or more than 140 hours per week on `How many hours per week?` question set",
-                                   `step_7` = "Unusual responses to highly correlated items",
+                                   `step_0` = "Completed survey in 3 minutes or less",
+                                   `step_1` = "Skipped over 25% of survey questions",
+                                   `step_2` = "Straightlined 15 or more responses in a row",
+                                   `step_3` = "Had 3 or more times they straightlined least 7 responses in a row",
+                                   `step_4` = "Straightlined 3 or more scales",
+                                   `step_5` = "Made repetitive pattern (e.g. AB-AB-AB, ABC-ABC-ABC) 50% or more of the time",
+                                   `step_6` = "Unrealistic responses to quantitative question set (e.g. hours per week)",
+                                   `step_7` = "Highly unusual responses to highly correlated items",
                                    `step_8` = "")) %>%
     rename(`Reason for Flag` = last_dataframe)
   
